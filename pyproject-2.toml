@@ -1,0 +1,44 @@
+# Spherion Basic Conversion **with Refinement** Package
+# ==========================================================
+# This single canvas file contains an **updated, installable Python package**
+# that now supports **Point → Spherion conversion** **and** **level‑by‑level
+# refinement (zone‑collapsing)** based on a measurement/observation point.
+# ---------------------------------------------------------------------------
+# 📁 Directory layout (all files are embedded below)
+# ├─ pyproject.toml
+# ├─ README.md
+# ├─ LICENSE.txt
+# ├─ spherion/                  # Core library
+# │  ├─ __init__.py
+# │  ├─ coordinate.py           # Encoding & refinement logic
+# │  └─ cli.py                  # Console interface (convert & refine)
+# └─ tests/
+#    └─ test_coordinate.py
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# File: pyproject.toml
+# ---------------------------------------------------------------------------
+# PEP 621‑compliant build config (setuptools backend)
+# ```toml
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spherion-basic-conversion"
+version = "0.2.0"
+description = "Free‑tier utilities to convert Cartesian / spherical points to Spherion hierarchical coordinates and refine them by measurement."
+authors = [{ name = "Fausto M. Freire", email = "<YOUR_EMAIL>@example.com" }]
+license = { file = "LICENSE.txt" }
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.scripts]
+spherion = "spherion.cli:main"
+# ```
