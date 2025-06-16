@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Spherion Demo</title>
+  <style>body{margin:0;overflow:hidden;font-family:sans-serif}</style>
+</head>
+<body>
+<p>"Wellow world!"</p>
+<canvas id="c"></canvas>
+
+<!-- three.js + lil-gui from CDN -->
+<script src="https://unpkg.com/three@0.163.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.163.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/lil-gui@0.19/dist/lil-gui.min.js"></script>
+
+<script type="module">
+import {cartesianToSpherion, refineByMeasurement} from './spherion.js';
+
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+// Scene / camera / controls
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(4,3,4);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+// Unit sphere mesh
+const sphereGeo  = new THREE.SphereGeometry(1, 64, 32);
+const sphereMat  = new THREE.MeshBasicMaterial({color:0x99ccff, wireframe:true, opacity:0.3, transparent:true});
+scene.add(new THREE.Mesh(sphereGeo, sphereMat));
+
+// Equator helpers
+const circleMat  = new THREE.LineBasicMaterial({color:0xffffff, opacity:0.35, transparent:true});
+['x','y','z'].forEach(axis=>{
+  const circ = new THREE.CircleGeometry(1, 64);
+  circ.vertices.shift();                       // remove centre vertex
+  const line = new THREE.LineLoop(circ, circleMat);
+  if(axis==='x') line.rotation.y = Math.PI/2;
+  if(axis==='y') line.rotation.x = Math.PI/2;
+  scene.add(line);
+});
+
+// ---------- GUI ----------
+const gui = new lil.GUI();
+const params = { x:1, y:2, z:3, refine:false };
+gui.add(params,'x',-3,3).onChange(update);
+gui.add(params,'y',-3,3).onChange(update);
+gui.add(params,'z',-3,3).onChange(update);
+gui.add(params,'refine').name('Add refinement').onChange(()=>{refineStep(); params.refine=false;});
+
+// ---------- Spherion visual elements ----------
+let pointMesh, cellGroup;
+update();
+
+function update(){
+  showCoordinate(cartesianToSpherion(params.x, params.y, params.z));
+}
+function refineStep(){
+  const cur = pointMesh.userData.coord;
+  const refined = refineByMeasurement(cur, params.x, params.y, params.z, 1);
+  showCoordinate(refined);
+}
+function showCoordinate(coord){
+  // Remove previous visuals
+  if(pointMesh) scene.remove(pointMesh);
+  if(cellGroup) scene.remove(cellGroup);
+
+  // Point
+  const pSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 16, 16),
+    new THREE.MeshBasicMaterial({color:0xff0000})
+  );
+  const [cx,cy,cz] = coord.toCartesian();
+  pSphere.position.set(cx,cy,cz);
+  pSphere.userData.coord = coord;
+  scene.add(pSphere);
+  pointMesh = pSphere;
+
+  // Cell cubes for every depth
+  cellGroup = new THREE.Group();
+  const cellMat = new THREE.LineBasicMaterial({color:0x00ff00, opacity:0.5, transparent:true});
+  let size = 2/Math.sqrt(3);                       // Level-0 cube edge
+  let cxCell = Math.sign(coord.sign_x)*size/4;
+  let cyCell = Math.sign(coord.sign_y)*size/4;
+  let czCell = Math.sign(coord.sign_z)*size/4;
+  // Draw outer cube
+  addCube(size, cxCell*2, cyCell*2, czCell*2);
+
+  // Deeper levels
+  size /= 2;
+  coord.path.forEach(([bx,by,bz])=>{
+    cxCell += bx*size/2;
+    cyCell += by*size/2;
+    czCell += bz*size/2;
+    addCube(size, cxCell, cyCell, czCell);
+    size /= 2;
+  });
+  scene.add(cellGroup);
+
+  function addCube(edge, ox,oy,oz){
+    const g = new THREE.BoxGeometry(edge, edge, edge);
+    const box = new THREE.LineSegments(new THREE.EdgesGeometry(g), cellMat);
+    box.position.set(ox,oy,oz);
+    cellGroup.add(box);
+  }
+}
+
+// ---------- render loop ----------
+function render(){
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>
